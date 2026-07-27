@@ -52,8 +52,21 @@ export async function POST(req: NextRequest) {
     return errorPage(`Launch validation failed: ${(e as Error).message}`);
   }
 
-  // Choose the persona: explicit custom param wins; else default to the first.
+  // Choose the persona. Priority:
+  //   1. ?persona= on the assignment's External Tool URL (per-assignment)
+  //   2. the `persona` custom field from the Developer Key (tool-wide default)
+  //   3. first persona in the library.
+  let urlHint: string | undefined;
+  if (claims.targetLinkUri) {
+    try {
+      urlHint =
+        new URL(claims.targetLinkUri).searchParams.get("persona") ?? undefined;
+    } catch {
+      /* ignore malformed target link */
+    }
+  }
   const personaSlug =
+    (urlHint && getPersona(urlHint)?.slug) ||
     (claims.personaHint && getPersona(claims.personaHint)?.slug) ||
     PERSONAS[0].slug;
 

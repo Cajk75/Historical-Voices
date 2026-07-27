@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 40 33% 98%;
+    --foreground: 20 14% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 20 14% 10%;
+    --primary: 215 60% 35%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 40 20% 94%;
+    --secondary-foreground: 20 14% 20%;
+    --muted: 40 20% 94%;
+    --muted-foreground: 25 8% 45%;
+    --accent: 40 30% 92%;
+    --accent-foreground: 20 14% 20%;
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 30 15% 88%;
+    --input: 30 15% 88%;
+    --ring: 215 60% 35%;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 20 14% 8%;
+    --foreground: 40 33% 96%;
+    --card: 20 14% 11%;
+    --card-foreground: 40 33% 96%;
+    --primary: 215 70% 60%;
+    --primary-foreground: 20 14% 8%;
+    --secondary: 20 10% 16%;
+    --secondary-foreground: 40 33% 96%;
+    --muted: 20 10% 16%;
+    --muted-foreground: 40 10% 65%;
+    --accent: 20 10% 18%;
+    --accent-foreground: 40 33% 96%;
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 20 10% 20%;
+    --input: 20 10% 20%;
+    --ring: 215 70% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Hover-translate gloss underline for scaffolded subtitles. */
+.gloss-word {
+  cursor: help;
+  border-bottom: 1px dotted hsl(var(--primary));
+  transition: background-color 0.15s ease;
+}
+.gloss-word:hover {
+  background-color: hsl(var(--primary) / 0.12);
+  border-radius: 3px;
+}

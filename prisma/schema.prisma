@@ -1,0 +1,98 @@
+// Historical Voices — data model
+// Provider: Supabase Postgres. Run `npm run db:push` once DATABASE_URL is set.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// A registered Canvas platform (issuer + client). Supports multiple deployments.
+model Platform {
+  id           String   @id @default(cuid())
+  issuer       String
+  clientId     String
+  authLoginUrl String
+  authTokenUrl String
+  jwksUrl      String
+  createdAt    DateTime @default(now())
+
+  @@unique([issuer, clientId])
+}
+
+// One LTI launch → one learning session with a persona.
+model Session {
+  id           String   @id @default(cuid())
+  // LTI identity (from validated launch JWT)
+  issuer       String
+  clientId     String
+  ltiUserId    String
+  userName     String?
+  roles        String[] // e.g. ["...#Learner"]
+  contextId    String? // custom_canvas_course_id
+  resourceId   String? // resource_link.id
+
+  // Persona chosen for this session
+  personaSlug  String
+
+  // AGS grade passback target (from launch claim)
+  lineitemUrl  String?
+  agsScopes    String[]
+
+  status       SessionStatus @default(READING)
+  score        Int? // 0–100 final grade
+  cefrLevel    String?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  turns        Turn[]
+  feedback     Feedback?
+
+  @@index([issuer, ltiUserId])
+}
+
+enum SessionStatus {
+  READING
+  CONVERSING
+  EVALUATED
+  GRADED
+}
+
+// A single message in the dialogue (student or persona).
+model Turn {
+  id         String   @id @default(cuid())
+  sessionId  String
+  session    Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role       TurnRole
+  text       String   @db.Text
+  createdAt  DateTime @default(now())
+
+  @@index([sessionId])
+}
+
+enum TurnRole {
+  STUDENT
+  PERSONA
+}
+
+// Evaluation output produced by the feedback engine.
+model Feedback {
+  id                 String  @id @default(cuid())
+  sessionId          String  @unique
+  session            Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  cefrLevel          String
+  vocabularyScore    Int
+  grammarScore       Int
+  comprehensionScore Int
+  overallScore       Int
+  // JSON blobs: gentle corrections, strengths, vocabulary highlights
+  corrections        Json
+  strengths          Json
+  summary            String  @db.Text
+  createdAt          DateTime @default(now())
+}

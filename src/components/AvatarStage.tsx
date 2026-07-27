@@ -13,13 +13,92 @@ export function AvatarStage({
   accentColor,
   speaking,
   listening,
+  compact = false,
 }: {
   name: string;
   portrait: string;
   accentColor: string;
   speaking: boolean;
   listening: boolean;
+  compact?: boolean;
 }) {
+  // Compact variant for embedded/iframe layouts: a horizontal band with the
+  // animated portrait + amplitude bars, always visible above the subtitles.
+  if (compact) {
+    return (
+      <div
+        className="relative flex w-full items-center justify-center gap-4 overflow-hidden rounded-t-xl py-3"
+        style={{
+          background: `radial-gradient(circle at 50% 0%, hsl(${accentColor} / 0.22), hsl(${accentColor} / 0.04))`,
+        }}
+      >
+        <div className="relative flex items-center justify-center">
+          <div
+            className="absolute h-20 w-20 rounded-full"
+            style={{
+              animation: speaking
+                ? "hv-pulse-sm 1.4s ease-out infinite"
+                : "none",
+            }}
+          />
+          <div
+            className="relative h-[4.5rem] w-[4.5rem] rounded-full border-2 bg-cover bg-center transition-transform"
+            style={{
+              backgroundImage: `url(${portrait})`,
+              borderColor: `hsl(${accentColor})`,
+              transform: speaking ? "scale(1.05)" : "scale(1)",
+            }}
+            aria-label={`${name} avatar`}
+          />
+        </div>
+        <div className="flex flex-col items-start gap-1.5">
+          <div className="flex h-6 items-end gap-1">
+            {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+              <span
+                key={i}
+                className="w-1 rounded-full"
+                style={{
+                  backgroundColor: `hsl(${accentColor})`,
+                  height: speaking ? undefined : "5px",
+                  animation: speaking
+                    ? `hv-bars-sm 0.55s ease-in-out ${i * 0.07}s infinite alternate`
+                    : "none",
+                }}
+              />
+            ))}
+          </div>
+          <span
+            className="rounded-full px-2 py-0.5 text-[11px] font-medium"
+            style={{
+              backgroundColor: `hsl(${accentColor} / 0.15)`,
+              color: `hsl(${accentColor})`,
+            }}
+          >
+            {speaking ? "🔊 Speaking…" : listening ? "🎙️ Listening…" : "● Live"}
+          </span>
+        </div>
+        <style jsx>{`
+          @keyframes hv-pulse-sm {
+            0% {
+              box-shadow: 0 0 0 0 hsl(${accentColor} / 0.45);
+            }
+            100% {
+              box-shadow: 0 0 0 22px hsl(${accentColor} / 0);
+            }
+          }
+          @keyframes hv-bars-sm {
+            from {
+              height: 5px;
+            }
+            to {
+              height: 22px;
+            }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
   return (
     <div
       className="relative flex h-full min-h-[320px] w-full flex-col items-center justify-center overflow-hidden rounded-xl"

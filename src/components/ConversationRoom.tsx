@@ -316,22 +316,19 @@ export function ConversationRoom({
 
         {/* transcript + controls */}
         <div className="flex min-h-0 flex-col rounded-xl border bg-card">
+          {/* always-visible animated avatar in embedded/small layouts */}
+          <div className="lg:hidden">
+            <AvatarStage
+              name={persona.name}
+              portrait={persona.portrait}
+              accentColor={persona.accentColor}
+              speaking={phase === "speaking"}
+              listening={phase === "listening"}
+              compact
+            />
+          </div>
           <div className="flex items-center justify-between border-b px-4 py-2">
-            {/* compact avatar for small/embedded layouts */}
-            <div className="flex items-center gap-2 lg:hidden">
-              <div
-                className={`h-8 w-8 rounded-full bg-cover bg-center ${
-                  phase === "speaking" ? "animate-pulse ring-2 ring-primary" : ""
-                }`}
-                style={{ backgroundImage: `url(${persona.portrait})` }}
-              />
-              <span className="text-sm font-medium">
-                {phase === "speaking" ? "Speaking…" : "Live subtitles"}
-              </span>
-            </div>
-            <span className="hidden text-sm font-medium lg:inline">
-              Live subtitles
-            </span>
+            <span className="text-sm font-medium">Live subtitles</span>
             <LangToggle lang={lang} setLang={setLang} />
           </div>
 

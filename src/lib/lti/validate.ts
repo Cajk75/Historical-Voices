@@ -5,7 +5,7 @@
 //  - message type / version are correct
 // Returns parsed LaunchClaims on success; throws on any failure.
 
-import { jwtVerify, createRemoteJWKSet, decodeJwt } from "jose";
+import { jwtVerify, createRemoteJWKSet, decodeJwt, errors } from "jose";
 import { resolvePlatform, MOCK_ISSUER } from "@/lib/lti/platform";
 import { getVerificationKey } from "@/lib/lti/keys";
 import { parseLaunchClaims, CLAIM, type LaunchClaims } from "@/lib/lti/claims";
@@ -39,10 +39,34 @@ export async function validateLaunch(
       jwks = createRemoteJWKSet(new URL(platform.jwksUrl));
       jwksCache.set(platform.jwksUrl, jwks);
     }
-    ({ payload } = await jwtVerify(idToken, jwks, {
+    const verifyOpts = {
       issuer: platform.issuer,
       audience: platform.clientId,
-    }));
+    };
+    try {
+      ({ payload } = await jwtVerify(idToken, jwks, verifyOpts));
+    } catch (err) {
+      // Some platforms (incl. self-hosted Canvas) publish several keys with
+      // the same alg and sign tokens without a `kid` header. jose then can't
+      // pick a single key — iterate the candidates and accept the one that
+      // verifies. Signature security is unchanged: one of the platform's own
+      // published keys must still validate the token.
+      if (err instanceof errors.JWKSMultipleMatchingKeys) {
+        let verified = false;
+        for await (const candidate of err) {
+          try {
+            ({ payload } = await jwtVerify(idToken, candidate, verifyOpts));
+            verified = true;
+            break;
+          } catch {
+            // try next candidate
+          }
+        }
+        if (!verified) throw new Error("No JWKS key verified the launch token.");
+      } else {
+        throw err;
+      }
+    }
   }
 
   // Nonce replay protection.

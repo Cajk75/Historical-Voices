@@ -87,29 +87,36 @@ async function elevenLabs(
 ): Promise<TtsResult> {
   const voiceId =
     env.tts.voices[personaSlug] || "21m00Tcm4TlvDq8ikWAM"; // default ElevenLabs voice
-  const res = await fetch(
-    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
-    {
-      method: "POST",
-      headers: {
-        "xi-api-key": env.tts.key,
-        "Content-Type": "application/json",
-        Accept: "audio/mpeg",
-      },
-      body: JSON.stringify({
-        text,
-        model_id: "eleven_turbo_v2_5",
-        voice_settings: { stability: 0.5, similarity_boost: 0.75 },
-      }),
-    }
-  );
-  if (!res.ok) {
-    // Fail soft: fall back to browser TTS rather than breaking the session.
-    return { audioUrl: null, provider: "browser-speechSynthesis (elevenlabs failed)" };
+  try {
+    const res = await fetch(
+      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+      {
+        method: "POST",
+        headers: {
+          "xi-api-key": env.tts.key,
+          "Content-Type": "application/json",
+          Accept: "audio/mpeg",
+        },
+        body: JSON.stringify({
+          text,
+          model_id: "eleven_turbo_v2_5",
+          voice_settings: { stability: 0.5, similarity_boost: 0.75 },
+        }),
+      }
+    );
+    if (!res.ok) throw new Error(`elevenlabs ${res.status}`);
+    const buf = Buffer.from(await res.arrayBuffer());
+    return {
+      audioUrl: `data:audio/mpeg;base64,${buf.toString("base64")}`,
+      provider: "elevenlabs",
+    };
+  } catch {
+    // Credits exhausted / quota / network — fall back to OpenAI TTS (which
+    // itself falls back to the browser voice if unavailable).
+    if (env.chat.openaiKey) return openaiTts(personaSlug, text);
+    return {
+      audioUrl: null,
+      provider: "browser-speechSynthesis (elevenlabs failed)",
+    };
   }
-  const buf = Buffer.from(await res.arrayBuffer());
-  return {
-    audioUrl: `data:audio/mpeg;base64,${buf.toString("base64")}`,
-    provider: "elevenlabs",
-  };
 }

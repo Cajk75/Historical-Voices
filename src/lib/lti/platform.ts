@@ -27,15 +27,26 @@ export function getMockPlatform(): Platform {
   };
 }
 
+// CANVAS_ISSUER may be a comma-separated list of candidate issuers (useful for
+// self-hosted Canvas, where the issuer may be the default canvas.instructure.com
+// or the instance's own domain). All candidates share the same client/endpoints.
+function issuerMatches(issuer: string): boolean {
+  return env.canvas.issuer
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .includes(issuer);
+}
+
 // Resolve by issuer (and optionally client_id). Configured Canvas first,
 // then the dev mock platform when LTI_DEV_MODE is on.
 export function resolvePlatform(
   issuer?: string,
   clientId?: string
 ): Platform | null {
-  if (issuer === env.canvas.issuer && env.canvas.clientId) {
+  if (issuer && issuerMatches(issuer) && env.canvas.clientId) {
     return {
-      issuer: env.canvas.issuer,
+      issuer, // the matched candidate — used for jwt `iss` verification
       clientId: env.canvas.clientId,
       authLoginUrl: env.canvas.authLoginUrl,
       authTokenUrl: env.canvas.authTokenUrl,
@@ -46,10 +57,10 @@ export function resolvePlatform(
     return getMockPlatform();
   }
   // Fallback: if a real Canvas is configured but issuer wasn't passed (login
-  // initiation), use the configured Canvas.
+  // initiation), use the configured Canvas (first candidate issuer).
   if (env.canvas.clientId && !issuer) {
     return {
-      issuer: env.canvas.issuer,
+      issuer: env.canvas.issuer.split(",")[0].trim(),
       clientId: env.canvas.clientId,
       authLoginUrl: env.canvas.authLoginUrl,
       authTokenUrl: env.canvas.authTokenUrl,

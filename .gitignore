@@ -38,3 +38,7 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+.env*
+
+# env files saved without a leading dot (TextEdit strips it) — contain secrets
+env*.local

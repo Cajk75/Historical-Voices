@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 import { AvatarStage } from "@/components/AvatarStage";
 import { GlossText, LangToggle, type Lang } from "@/components/Gloss";
 import { Button } from "@/components/ui/button";
+import { useAudioLevel } from "@/hooks/useAudioLevel";
 
 type Persona = {
   slug: string;
@@ -54,6 +55,7 @@ export function ConversationRoom({
   const [micSupported, setMicSupported] = useState(true);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [audioEl, setAudioEl] = useState<HTMLAudioElement | null>(null);
   const recognitionRef = useRef<any>(null);
   const transcriptRef = useRef("");
   const shouldSendRef = useRef(false);
@@ -61,6 +63,14 @@ export function ConversationRoom({
 
   const studentTurns = lines.filter((l) => l.role === "student").length;
   const goalReached = studentTurns >= GOAL_TURNS;
+
+  // Single audio element for TTS playback; measured for mouth animation.
+  useEffect(() => {
+    const el = new Audio();
+    audioRef.current = el;
+    setAudioEl(el);
+  }, []);
+  const audioLevel = useAudioLevel(audioEl, phase === "speaking");
 
   // ---- speak persona lines ----
   const speak = useCallback(
@@ -307,10 +317,11 @@ export function ConversationRoom({
         <div className="hidden min-h-0 lg:block">
           <AvatarStage
             name={persona.name}
-            portrait={persona.portrait}
+            personaSlug={persona.slug}
             accentColor={persona.accentColor}
             speaking={phase === "speaking"}
             listening={phase === "listening"}
+            audioLevel={audioLevel}
           />
         </div>
 
@@ -320,10 +331,11 @@ export function ConversationRoom({
           <div className="lg:hidden">
             <AvatarStage
               name={persona.name}
-              portrait={persona.portrait}
+              personaSlug={persona.slug}
               accentColor={persona.accentColor}
               speaking={phase === "speaking"}
               listening={phase === "listening"}
+              audioLevel={audioLevel}
               compact
             />
           </div>

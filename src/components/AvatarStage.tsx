@@ -1,29 +1,45 @@
 "use client";
 
-// The animated avatar. In mock mode this is a CSS-animated portrait that
-// "speaks" (pulsing halo + animated mouth bars) while audio plays. When a real
-// provider (D-ID / Simli) is wired, swap the portrait block for the provider's
-// <video> element fed by the WebRTC stream — the speaking/idle contract stays.
+// The avatar presentation. Renders the amplitude-animated PersonaFace (mouth
+// synced to real audio via `audioLevel`), with a pulsing halo and status badge.
+// `compact` is the horizontal band used in embedded/iframe layouts.
 
-import { useEffect, useState } from "react";
+import { PersonaFace } from "@/components/PersonaFace";
 
 export function AvatarStage({
   name,
-  portrait,
+  personaSlug,
   accentColor,
   speaking,
   listening,
+  audioLevel = 0,
   compact = false,
 }: {
   name: string;
-  portrait: string;
+  personaSlug: string;
   accentColor: string;
   speaking: boolean;
   listening: boolean;
+  audioLevel?: number;
   compact?: boolean;
 }) {
-  // Compact variant for embedded/iframe layouts: a horizontal band with the
-  // animated portrait + amplitude bars, always visible above the subtitles.
+  const bars = (count: number, cls: string) => (
+    <div className={`flex items-end gap-1 ${cls}`}>
+      {Array.from({ length: count }, (_, i) => (
+        <span
+          key={i}
+          className="w-1 rounded-full transition-all duration-75"
+          style={{
+            backgroundColor: `hsl(${accentColor})`,
+            height: speaking
+              ? `${5 + audioLevel * (14 + ((i * 7) % 11))}px`
+              : "5px",
+          }}
+        />
+      ))}
+    </div>
+  );
+
   if (compact) {
     return (
       <div
@@ -36,37 +52,19 @@ export function AvatarStage({
           <div
             className="absolute h-20 w-20 rounded-full"
             style={{
-              animation: speaking
-                ? "hv-pulse-sm 1.4s ease-out infinite"
-                : "none",
+              animation: speaking ? "hv-pulse-sm 1.4s ease-out infinite" : "none",
             }}
           />
           <div
-            className="relative h-[4.5rem] w-[4.5rem] rounded-full border-2 bg-cover bg-center transition-transform"
-            style={{
-              backgroundImage: `url(${portrait})`,
-              borderColor: `hsl(${accentColor})`,
-              transform: speaking ? "scale(1.05)" : "scale(1)",
-            }}
+            className="relative h-[5rem] w-[5rem] overflow-hidden rounded-full border-2"
+            style={{ borderColor: `hsl(${accentColor})` }}
             aria-label={`${name} avatar`}
-          />
+          >
+            <PersonaFace slug={personaSlug} level={audioLevel} speaking={speaking} />
+          </div>
         </div>
         <div className="flex flex-col items-start gap-1.5">
-          <div className="flex h-6 items-end gap-1">
-            {[0, 1, 2, 3, 4, 5, 6].map((i) => (
-              <span
-                key={i}
-                className="w-1 rounded-full"
-                style={{
-                  backgroundColor: `hsl(${accentColor})`,
-                  height: speaking ? undefined : "5px",
-                  animation: speaking
-                    ? `hv-bars-sm 0.55s ease-in-out ${i * 0.07}s infinite alternate`
-                    : "none",
-                }}
-              />
-            ))}
-          </div>
+          {bars(7, "h-6")}
           <span
             className="rounded-full px-2 py-0.5 text-[11px] font-medium"
             style={{
@@ -86,14 +84,6 @@ export function AvatarStage({
               box-shadow: 0 0 0 22px hsl(${accentColor} / 0);
             }
           }
-          @keyframes hv-bars-sm {
-            from {
-              height: 5px;
-            }
-            to {
-              height: 22px;
-            }
-          }
         `}</style>
       </div>
     );
@@ -106,45 +96,24 @@ export function AvatarStage({
         background: `radial-gradient(circle at 50% 30%, hsl(${accentColor} / 0.25), hsl(${accentColor} / 0.05))`,
       }}
     >
-      {/* pulsing halo when speaking */}
       <div
-        className="absolute h-56 w-56 rounded-full transition-all duration-300"
+        className="absolute h-56 w-56 rounded-full"
         style={{
-          boxShadow: speaking
-            ? `0 0 0 0 hsl(${accentColor} / 0.5)`
-            : "none",
           animation: speaking ? "hv-pulse 1.4s ease-out infinite" : "none",
         }}
       />
       <div
-        className="relative h-44 w-44 rounded-full bg-cover bg-center ring-4 transition-transform"
+        className="relative h-52 w-52 overflow-hidden rounded-full ring-4"
         style={{
-          backgroundImage: `url(${portrait})`,
-          // subtle "nod" while speaking
-          transform: speaking ? "scale(1.03)" : "scale(1)",
-          // ring color follows accent
           // @ts-expect-error CSS var passthrough
           "--tw-ring-color": `hsl(${accentColor})`,
         }}
         aria-label={`${name} avatar`}
-      />
-
-      {/* mouth / amplitude bars */}
-      <div className="mt-5 flex h-8 items-end gap-1">
-        {[0, 1, 2, 3, 4].map((i) => (
-          <span
-            key={i}
-            className="w-1.5 rounded-full"
-            style={{
-              backgroundColor: `hsl(${accentColor})`,
-              height: speaking ? undefined : "6px",
-              animation: speaking
-                ? `hv-bars 0.6s ease-in-out ${i * 0.08}s infinite alternate`
-                : "none",
-            }}
-          />
-        ))}
+      >
+        <PersonaFace slug={personaSlug} level={audioLevel} speaking={speaking} />
       </div>
+
+      <div className="mt-5">{bars(9, "h-8")}</div>
 
       <div className="absolute bottom-3 left-3 rounded-full bg-black/40 px-3 py-1 text-xs font-medium text-white backdrop-blur">
         {speaking ? "🔊 Speaking…" : listening ? "🎙️ Listening…" : "● Live"}
@@ -157,14 +126,6 @@ export function AvatarStage({
           }
           100% {
             box-shadow: 0 0 0 40px hsl(${accentColor} / 0);
-          }
-        }
-        @keyframes hv-bars {
-          from {
-            height: 6px;
-          }
-          to {
-            height: 30px;
           }
         }
       `}</style>

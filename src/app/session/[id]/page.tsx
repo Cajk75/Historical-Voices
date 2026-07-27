@@ -5,7 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/store";
 import { getPersona } from "@/lib/personas";
 import { getCurrentAppSession } from "@/lib/lti/current";
-import { ConversationRoom } from "@/components/ConversationRoom";
+import { ConversationSwitcher } from "@/components/ConversationSwitcher";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +22,7 @@ export default async function ConversationPage({
   if (!persona) notFound();
 
   return (
-    <ConversationRoom
+    <ConversationSwitcher
       sessionId={session.id}
       persona={{
         slug: persona.slug,

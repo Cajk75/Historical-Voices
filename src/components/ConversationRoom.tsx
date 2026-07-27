@@ -51,9 +51,26 @@ export function ConversationRoom({
   const recognitionRef = useRef<any>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
-  // Speak the persona greeting once on mount.
+  // Speak the persona greeting once on mount — with the real voice when a TTS
+  // provider is configured (fetched from /api/tts), else browser fallback.
   useEffect(() => {
-    speak(persona.greeting, null);
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/tts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId, text: persona.greeting }),
+        });
+        const data = res.ok ? await res.json() : { audioUrl: null };
+        if (!cancelled) speak(persona.greeting, data.audioUrl ?? null);
+      } catch {
+        if (!cancelled) speak(persona.greeting, null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

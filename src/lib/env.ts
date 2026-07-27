@@ -38,7 +38,10 @@ export const env = {
   },
 
   tts: {
-    provider: (process.env.TTS_PROVIDER ?? "mock") as "mock" | "elevenlabs",
+    provider: (process.env.TTS_PROVIDER ?? "mock") as
+      | "mock"
+      | "openai"
+      | "elevenlabs",
     key: process.env.ELEVENLABS_API_KEY ?? "",
     voices: {
       lincoln: process.env.ELEVENLABS_VOICE_LINCOLN ?? "",

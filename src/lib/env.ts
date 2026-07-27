@@ -67,6 +67,7 @@ export const env = {
   translate: {
     provider: (process.env.TRANSLATE_PROVIDER ?? "mock") as
       | "mock"
+      | "openai"
       | "deepl"
       | "google",
     deeplKey: process.env.DEEPL_API_KEY ?? "",

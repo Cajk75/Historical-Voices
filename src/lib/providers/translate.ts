@@ -21,6 +21,9 @@ export async function glossText(
   lang: Lang
 ): Promise<GlossResult> {
   const trimmed = text.trim();
+  if (env.translate.provider === "openai" && env.chat.openaiKey) {
+    return openaiGloss(trimmed, lang);
+  }
   if (env.translate.provider === "deepl" && env.translate.deeplKey) {
     return deepl(trimmed, lang);
   }
@@ -28,6 +31,59 @@ export async function glossText(
     return google(trimmed, lang);
   }
   return mockGloss(trimmed, lang);
+}
+
+// ---- OpenAI gloss ----
+// Uses the existing OpenAI key: accurate ES/PT translation + a simplified
+// English synonym in one call. Server-side cache keeps repeat hovers free.
+const glossCacheG = globalThis as unknown as {
+  __hvGlossCache?: Map<string, GlossResult>;
+};
+const glossCache: Map<string, GlossResult> =
+  glossCacheG.__hvGlossCache ?? (glossCacheG.__hvGlossCache = new Map());
+
+async function openaiGloss(text: string, lang: Lang): Promise<GlossResult> {
+  const key = `${lang}:${text.toLowerCase()}`;
+  const cached = glossCache.get(key);
+  if (cached) return cached;
+
+  const language = lang === "ES" ? "Spanish" : "Portuguese";
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${env.chat.openaiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: env.chat.model,
+        temperature: 0,
+        max_tokens: 80,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content: `You translate English words/phrases for A2-B1 ESL learners. Reply with STRICT JSON: {"target": "<${language} translation>", "simpleEnglish": "<simpler English synonym or 3-5 word plain definition>"}. For the target, give the most common ${language} equivalent in context; no explanations.`,
+          },
+          { role: "user", content: text },
+        ],
+      }),
+    });
+    if (!res.ok) return mockGloss(text, lang);
+    const json = (await res.json()) as any;
+    const parsed = JSON.parse(json.choices?.[0]?.message?.content ?? "{}");
+    const result: GlossResult = {
+      source: text,
+      target: parsed.target || text,
+      lang,
+      simpleEnglish: parsed.simpleEnglish || undefined,
+      provider: "openai",
+    };
+    glossCache.set(key, result);
+    return result;
+  } catch {
+    return mockGloss(text, lang);
+  }
 }
 
 async function deepl(text: string, lang: Lang): Promise<GlossResult> {

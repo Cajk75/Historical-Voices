@@ -29,11 +29,15 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Ensure we have an evaluation.
+  // Ensure we have an evaluation. A failed save shouldn't block grade passback.
   let feedback = session.feedback;
   if (!feedback) {
     feedback = await evaluateSession(session.personaSlug, session.turns);
-    await saveFeedback(session.id, feedback);
+    try {
+      await saveFeedback(session.id, feedback);
+    } catch (e) {
+      console.error("saveFeedback failed (continuing to passback):", e);
+    }
   }
 
   const result = await submitGrade({

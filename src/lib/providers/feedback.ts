@@ -72,7 +72,50 @@ weighted mean (vocab 30%, grammar 30%, comprehension 40%).`;
   });
   const raw = completion.choices[0]?.message?.content ?? "{}";
   const parsed = JSON.parse(raw);
-  return { ...parsed, provider: "openai" } as Evaluation;
+
+  // Normalize aggressively — model output shape is untrusted, and a malformed
+  // field must never crash the feedback page or the DB write.
+  const num = (v: unknown, d: number) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? Math.max(0, Math.min(100, Math.round(n))) : d;
+  };
+  const vocabularyScore = num(parsed.vocabularyScore, 60);
+  const grammarScore = num(parsed.grammarScore, 60);
+  const comprehensionScore = num(parsed.comprehensionScore, 60);
+  const overallScore = num(
+    parsed.overallScore,
+    Math.round(
+      vocabularyScore * 0.3 + grammarScore * 0.3 + comprehensionScore * 0.4
+    )
+  );
+  return {
+    cefrLevel:
+      typeof parsed.cefrLevel === "string" && parsed.cefrLevel.length <= 4
+        ? parsed.cefrLevel
+        : "A2",
+    vocabularyScore,
+    grammarScore,
+    comprehensionScore,
+    overallScore,
+    strengths: Array.isArray(parsed.strengths)
+      ? parsed.strengths.slice(0, 5).map(String)
+      : ["Took part in the conversation — great start."],
+    corrections: Array.isArray(parsed.corrections)
+      ? parsed.corrections
+          .filter((c: any) => c && c.original && c.suggestion)
+          .slice(0, 3)
+          .map((c: any) => ({
+            original: String(c.original),
+            suggestion: String(c.suggestion),
+            why: String(c.why ?? ""),
+          }))
+      : [],
+    summary:
+      typeof parsed.summary === "string" && parsed.summary.trim()
+        ? parsed.summary
+        : "Good effort — keep practicing your English!",
+    provider: "openai",
+  };
 }
 
 // ---- Heuristic (mock) evaluation ----

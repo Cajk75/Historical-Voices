@@ -25,11 +25,16 @@ export default async function FeedbackPage({
   const persona = getPersona(session.personaSlug);
   if (!persona) notFound();
 
-  // Evaluate on demand and persist (idempotent-ish: re-evaluates if absent).
+  // Evaluate on demand and persist. A failed save must never 500 the page —
+  // the student still sees their feedback, and /api/grade will retry the save.
   let feedback = session.feedback;
   if (!feedback) {
     feedback = await evaluateSession(session.personaSlug, session.turns);
-    await saveFeedback(session.id, feedback);
+    try {
+      await saveFeedback(session.id, feedback);
+    } catch (e) {
+      console.error("saveFeedback failed (rendering anyway):", e);
+    }
   }
 
   const cefrBlurb: Record<string, string> = {
@@ -87,7 +92,7 @@ export default async function FeedbackPage({
       <section className="mt-6 rounded-xl border bg-card p-5 shadow-sm">
         <h2 className="mb-3 font-semibold">✅ What you did well</h2>
         <ul className="space-y-1.5 text-sm">
-          {feedback.strengths.map((s, i) => (
+          {(feedback.strengths ?? []).map((s, i) => (
             <li key={i} className="flex gap-2">
               <span className="text-green-600">•</span>
               <span>{s}</span>
@@ -97,13 +102,13 @@ export default async function FeedbackPage({
       </section>
 
       {/* Gentle corrections */}
-      {feedback.corrections.length > 0 && (
+      {(feedback.corrections ?? []).length > 0 && (
         <section className="mt-6 rounded-xl border bg-card p-5 shadow-sm">
           <h2 className="mb-3 font-semibold">
             🌱 Gentle tips to grow (not mistakes to fear)
           </h2>
           <ul className="space-y-3 text-sm">
-            {feedback.corrections.map((c, i) => (
+            {(feedback.corrections ?? []).map((c, i) => (
               <li key={i} className="rounded-lg bg-accent/40 p-3">
                 <span className="line-through opacity-70">{c.original}</span>{" "}
                 <span className="mx-1">→</span>

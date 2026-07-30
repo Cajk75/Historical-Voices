@@ -62,7 +62,9 @@ response by greeting the student and asking what they understood from your text.
       instructions,
       audio: {
         input: {
-          transcription: { model: "gpt-4o-mini-transcribe" },
+          // language pinned to English: ESL learners' accents were being
+          // auto-detected as other languages, corrupting transcripts/grades.
+          transcription: { model: "gpt-4o-mini-transcribe", language: "en" },
           turn_detection: { type: "semantic_vad" },
         },
         output: {
